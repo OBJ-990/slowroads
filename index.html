@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlowRoads Clone</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #222; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let roadOffset = 0;
+        let carX = canvas.width / 2;
+        let speed = 5;
+        let leftPressed = false;
+        let rightPressed = false;
+
+        function drawRoad() {
+            ctx.fillStyle = "#222";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([20, 20]);
+            ctx.beginPath();
+            for (let y = -20; y < canvas.height; y += 40) {
+                ctx.moveTo(canvas.width / 2, y + roadOffset);
+                ctx.lineTo(canvas.width / 2, y + 20 + roadOffset);
+            }
+            ctx.stroke();
+        }
+
+        function drawCar() {
+            ctx.fillStyle = "red";
+            ctx.fillRect(carX - 15, canvas.height - 60, 30, 50);
+        }
+
+        function update() {
+            roadOffset += speed;
+            if (roadOffset > 40) roadOffset = 0;
+
+            if (leftPressed) carX -= 5;
+            if (rightPressed) carX += 5;
+
+            carX = Math.max(50, Math.min(canvas.width - 50, carX));
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawRoad();
+            drawCar();
+            update();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") leftPressed = true;
+            if (e.key === "ArrowRight") rightPressed = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft") leftPressed = false;
+            if (e.key === "ArrowRight") rightPressed = false;
+        });
+    </script>
+</body>
+</html>
