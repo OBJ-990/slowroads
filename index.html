@@ -12,57 +12,74 @@
 <body>
     <canvas id="gameCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon-es/0.20.0/cannon-es.min.js"></script>
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
+        // Lighting
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(5, 10, 5);
+        light.castShadow = true;
+        scene.add(light);
+
+        // Physics world
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.8, 0);
+
         // Road
-        const roadGeometry = new THREE.CylinderGeometry(20, 20, 100, 40, 10, true);
-        const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, side: THREE.DoubleSide });
+        const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
+        const roadGeometry = new THREE.PlaneGeometry(50, 500, 20, 100);
+        roadGeometry.rotateX(-Math.PI / 2);
         const road = new THREE.Mesh(roadGeometry, roadMaterial);
-        road.rotation.x = -Math.PI / 2;
-        road.position.z = -50;
+        road.receiveShadow = true;
         scene.add(road);
+
+        // Road physics
+        const roadBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+        roadBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        world.addBody(roadBody);
 
         // Car
         const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
         const carMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
-        car.position.y = 0.5;
+        car.castShadow = true;
         scene.add(car);
 
-        // Lighting
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(5, 10, 5);
-        scene.add(light);
+        // Car physics
+        const carBody = new CANNON.Body({ mass: 1, shape: new CANNON.Box(new CANNON.Vec3(0.5, 0.25, 1)) });
+        carBody.position.set(0, 0.5, 0);
+        world.addBody(carBody);
 
         camera.position.set(0, 2, 5);
         camera.lookAt(car.position);
 
-        let speed = 0.2;
+        let speed = 0;
         let direction = 0;
-        let curveAmount = 0;
 
         function animate() {
             requestAnimationFrame(animate);
 
-            road.position.z += speed;
-            if (road.position.z > 0) road.position.z = -50;
+            world.step(1 / 60);
+            car.position.copy(carBody.position);
+            car.quaternion.copy(carBody.quaternion);
 
-            car.rotation.y = direction * 0.2;
-            car.position.x += direction * 0.05;
-
-            road.rotation.z = Math.sin(curveAmount) * 0.1;
-            curveAmount += direction * 0.02;
+            if (speed > 0) speed -= 0.001; 
+            carBody.velocity.z = -speed;
+            carBody.velocity.x = direction * speed * 0.5;
+            car.rotation.y = direction * 0.1;
 
             renderer.render(scene, camera);
         }
         animate();
 
         window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp") speed = 0.2;
             if (e.key === "ArrowLeft") direction = -1;
             if (e.key === "ArrowRight") direction = 1;
         });
