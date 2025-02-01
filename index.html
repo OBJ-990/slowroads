@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SlowRoads Clone 3D</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #222; }
+        body { margin: 0; overflow: hidden; background: #87CEEB; }
         canvas { display: block; }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon-es/0.20.0/cannon-es.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/perlin-noise-3d@1.0.0/perlin.js"></script>
     <script>
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -27,24 +27,34 @@
         light.castShadow = true;
         scene.add(light);
 
+        // Sky & Fog
+        scene.fog = new THREE.Fog(0x87CEEB, 10, 200);
+
         // Physics world
         const world = new CANNON.World();
         world.gravity.set(0, -9.8, 0);
 
-        // Road
-        const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x444444 });
-        const roadGeometry = new THREE.PlaneGeometry(50, 500, 20, 100);
-        roadGeometry.rotateX(-Math.PI / 2);
-        const road = new THREE.Mesh(roadGeometry, roadMaterial);
-        road.receiveShadow = true;
-        scene.add(road);
+        // Road generator
+        const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x222222 });
+        const roadPieces = [];
+        const roadWidth = 10;
+        let noise = new Perlin();
+        let roadZ = 0;
+        
+        function generateRoadPiece() {
+            const roadGeometry = new THREE.PlaneGeometry(roadWidth, 20);
+            roadGeometry.rotateX(-Math.PI / 2);
+            const road = new THREE.Mesh(roadGeometry, roadMaterial);
+            road.position.z = roadZ;
+            road.receiveShadow = true;
+            scene.add(road);
+            roadPieces.push(road);
+            roadZ -= 20;
+        }
 
-        // Road physics
-        const roadBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-        roadBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        world.addBody(roadBody);
+        for (let i = 0; i < 20; i++) generateRoadPiece();
 
-        // Car
+        // Car model (simplified box for now)
         const carGeometry = new THREE.BoxGeometry(1, 0.5, 2);
         const carMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
         const car = new THREE.Mesh(carGeometry, carMaterial);
@@ -64,16 +74,22 @@
 
         function animate() {
             requestAnimationFrame(animate);
-
             world.step(1 / 60);
+
+            // Move the road backward
+            roadPieces.forEach((piece, index) => {
+                piece.position.z += speed;
+                if (piece.position.z > 10) {
+                    piece.position.z = roadZ;
+                    roadZ -= 20;
+                }
+            });
+
             car.position.copy(carBody.position);
             car.quaternion.copy(carBody.quaternion);
-
-            if (speed > 0) speed -= 0.001; 
             carBody.velocity.z = -speed;
             carBody.velocity.x = direction * speed * 0.5;
             car.rotation.y = direction * 0.1;
-
             renderer.render(scene, camera);
         }
         animate();
