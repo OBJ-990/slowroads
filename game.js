@@ -1,6 +1,9 @@
+// game.js - Main logic for the 3D driving game
+
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.min.js';
 import * as CANNON from 'https://cdnjs.cloudflare.com/ajax/libs/cannon-es/0.20.0/cannon-es.min.js';
 
+// Scene setup
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -8,31 +11,24 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// Lighting
 const light = new THREE.DirectionalLight(0xffffff, 1.5);
 light.position.set(5, 10, 5);
 light.castShadow = true;
 scene.add(light);
 
+const ambientLight = new THREE.AmbientLight(0x404040, 2); // Added ambient light
+scene.add(ambientLight);
+
+// Sky & Fog
 scene.fog = new THREE.Fog(0x87CEEB, 10, 200);
 
+// Physics world
 const world = new CANNON.World();
 world.gravity.set(0, -9.8, 0);
 
-const roadMaterial = new THREE.ShaderMaterial({
-    vertexShader: `
-        varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        varying vec2 vUv;
-        void main() {
-            gl_FragColor = vec4(mix(vec3(0.1, 0.1, 0.1), vec3(0.3, 0.3, 0.3), vUv.y), 1.0);
-        }
-    `
-});
+// Road generator
+const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
 const roadPieces = [];
 const roadWidth = 10;
 let roadZ = 0;
@@ -50,6 +46,7 @@ function generateRoadPiece() {
 
 for (let i = 0; i < 20; i++) generateRoadPiece();
 
+// Car
 const carGeometry = new THREE.BoxGeometry(1.2, 0.6, 2.5);
 const carMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 const car = new THREE.Mesh(carGeometry, carMaterial);
